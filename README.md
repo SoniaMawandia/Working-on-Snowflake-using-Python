@@ -80,10 +80,21 @@ username = 'sfuser1'
 password = 'password123'
 account = 'hn85515.west-us-2.azure'
 warehouse = 'compute_WH'
-database = 'azuredatabase' 
-schema = ''
-tablename = ''
-conn = sf.connect(user=username, password=password, account=account)
+database = 'demo_db' 
+schema = 'alarmdeliverysys'
+tableName = 'devices'
+filename = 'devices.xlsx'
+path = 'c:\sf_demo\'
+stageName='pythonstage'
+
+#create a connection object to snowflake
+conn = sf.connect(
+   user=username, 
+   password=password, 
+   account=account,
+   warehouse=warehouse,
+   database=database,
+   schema = schema)
 
 def execute_query(connection,query):
     cursor=connection.cursor()
@@ -92,6 +103,16 @@ def execute_query(connection,query):
 
 
 try:
+
+    #step 1: read the xlsx file and convert it ito a csv
+    excel_filename = os.path.join(path,filename)
+    exceldf = pd.read_excel(excel_filename,index_col=None)
+    print("shape of excel file"+ exceldf.shape)
+    logger1.debug("Filename:"+excel_filename+" Fileshape:"+str(exceldf.shape))
+    csvfilename = filename+'.csv'
+    exceldf.to_csv(csvfilename, index=False)
+    
+    #step2: upload the csv file to stage
     #Select database to use            
     sql='use {}'.format(database)
     execute_query(conn,sql)
@@ -107,24 +128,26 @@ try:
     except:
         pass
 
-    #Select Query               
-    sql='select * from devicestable'
-    cursor=conn.cursor(DictCursor)
-    cursor.execute(sql)
-    for c in cursor:
-        print(c)
-    cursor.close()
-
     # Copy data to a stage in snowflake from local
     # Make sure that the snawflake stage named PYTHONSTAGE is already created
-    csv_file = "C:\\Users\\DELL\\Desktop\\HCL\\snowflake\\DevicesTable.csv"
     
-    sql = 'put file://{0} @{1} auto_compress=true'.format(csv_file, "PYTHONSTAGE")
+    sql = 'put file://{0} @{1} auto_compress=true'.format(csvfilename, stageName)
     execute_query(conn,sql)
-
+    
+    #step 3: copy the file data into the table and delete the file
     # Load data into DEVICESTABLE (make sure that the table exists)
-    sql ="COPY into {0} from @{1}/DevicesTable.csv.gz FILE_FORMAT=(TYPE=csv field_delimiter=',' skip_header=1) ON_ERROR = 'ABORT_STATEMENT' ".format('DEVICESTABLE', "PYTHONSTAGE")
-    execute_query(conn,sql)
+    sql ="COPY into {0} from @{1} files = ({2}.gz) FILE_FORMAT=(TYPE=csv field_delimiter=',' skip_header=1 FIELD_OPTIONALLY_ENCLOSED_BY='"') ON_ERROR = 'ABORT_STATEMENT' PURGE = TRUE".format(tableName,stageName,schema)
+    logger1.debug(sql)
+    ret = execute_query(conn,sql)
+    
+    #step 4: log/print the results from the copy query
+    sql = "SELECT * FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))"
+    cursor = conn.cusrsor(DictCursor)
+    cursor.execute(sql
+    for c in cursor:
+      print(c)
+      logger1.debug(c)
+   cursor.close   
 except Exception as e:
     print(e)
 
