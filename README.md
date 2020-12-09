@@ -13,8 +13,17 @@ Requirement
 --------------
 Lets say we have data in an excel file in following format:
 
+OwnerID   | BuildingID   | DeviceID
+----------|--------------|-----------
+Owner_001 |	100	         | sensor123
 
 
 To upload the data into snowflake we need to perform following steps:
 ---------------------------------------------------------------------
 1. Create a Database, Schema, Table in Snowflake (If does not exist)
+
+   CREATE DATABASE demo_db;
+   CREATE SCHEMA alarmdeliverysys;
+   CREATE TABLE devices(
+    
+   )
