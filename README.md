@@ -22,8 +22,14 @@ To upload the data into snowflake we need to perform following steps:
 ---------------------------------------------------------------------
 1. Create a Database, Schema, Table in Snowflake (If does not exist)
 
+```sql
    CREATE DATABASE demo_db;
+```
+```sql
    CREATE SCHEMA alarmdeliverysys;
+```
+```sql
    CREATE TABLE devices(
     
    )
+```
